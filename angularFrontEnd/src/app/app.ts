@@ -12,7 +12,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ExcelService } from './services/excel.service';
-import { ScraperService } from './services/scraper.service';
 import { ProcessedRow } from './interfaces/processed-row.interface';
 
 @Component({
@@ -52,9 +51,7 @@ export class AppComponent {
 
     private showBrowserSig: WritableSignal<boolean> = signal<boolean>(false);
 
-    constructor(private excelService: ExcelService, private scraperService: ScraperService) {
-        this.setupScraperListeners();
-    }
+    constructor(private excelService: ExcelService) {}
 
     // Expose as properties for template compatibility
     get file() { return this.fileSig(); }
@@ -76,54 +73,6 @@ export class AppComponent {
 
     private addLog(message: string) {
         this.logsSig.update(l => [...l, { message, timestamp: new Date() }]);
-    }
-
-    setupScraperListeners() {
-        this.scraperService.onProgress.subscribe((data: any) => {
-            if (data.message) {
-                this.addLog(data.message);
-            }
-            if (data.success !== undefined) {
-                // Update row status based on message or logic
-            }
-        });
-
-        this.scraperService.onComplete.subscribe((data: any) => {
-            this.isProcessingSig.set(false);
-            this.addLog('--- PROCESO FINALIZADO ---');
-
-            // Update data with results
-            if (data.results && Array.isArray(data.results)) {
-                this.dataSig.update(prev => {
-                    const next = prev.slice();
-
-                    // Find AuthId column again
-                    const headers = this.headersSig();
-                    let authIdCol = headers.find(h => h.toUpperCase().includes('REFERENCIA') || h.toUpperCase().includes('OPERATION'));
-                    if (!authIdCol && headers.length > 0) authIdCol = headers[0];
-
-                    if (!authIdCol) return next;
-
-                    data.results.forEach((res: any) => {
-                        const row = next.find(r => r[authIdCol!]?.toString().trim() === res.authId);
-                        if (row) {
-                            row.status = 'COMPLETED';
-                            row.message = 'Conciliado OK';
-
-                            // Optional: Add scraped data to row
-                            if (res.Total) row['MP_Total'] = res.Total;
-                            if (res.MedioPago) row['MP_Estado'] = res.MedioPago;
-                        }
-                    });
-                    return next;
-                });
-            }
-        });
-
-        this.scraperService.onError.subscribe((data: any) => {
-            this.isProcessingSig.set(false);
-            this.addLog(`Error: ${data.message}`);
-        });
     }
 
     openFileDialog() {
@@ -212,8 +161,6 @@ export class AppComponent {
 
         this.addLog(`Enviando ${authIds.length} operaciones al scraper...`);
         console.log('AuthIds:', authIds);
-
-        this.scraperService.scrape(authIds, this.showBrowserSig());
     }
 
     download() {
