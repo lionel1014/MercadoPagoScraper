@@ -1,0 +1,202 @@
+.spacer {
+    flex: 1 1 auto;
+}
+
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filename {
+    font-size: 14px;
+    margin-right: 12px;
+    opacity: 0.9;
+}
+
+.dense-form-field {
+    width: 120px;
+    font-size: 11px;
+}
+
+/* Specific button styles to stand out on primary toolbar */
+/* .contrast-btn {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+} */
+
+.run-btn {
+    background-color: #00ff88 !important;
+    color: #1a1a1a !important;
+}
+
+.container-fluid {
+    padding: 20px;
+    min-height: calc(100vh - 64px);
+}
+
+/* Upload Screen */
+.upload-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80vh;
+}
+
+.upload-card {
+    width: 400px;
+    text-align: center;
+    padding: 40px;
+}
+
+.upload-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #3f51b5;
+    margin-bottom: 20px;
+}
+
+/* Workspace Grid */
+.workspace-grid {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    /* Important for sticky behavior */
+}
+
+/* Table Section */
+.table-container {
+    flex: 1;
+    /* Takes available space */
+    background: white;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.full-width-table {
+    width: 100%;
+}
+
+/* Row Coloring */
+.row-processing {
+    background-color: #e3f2fd;
+}
+
+.row-completed {
+    background-color: #e8f5e9;
+}
+
+.row-error {
+    background-color: #ffebee;
+}
+
+.row-skipped {
+    background-color: #f5f5f5;
+    opacity: 0.6;
+}
+
+/* Chips */
+.chip-pending {
+    background-color: #eee !important;
+}
+
+.chip-processing {
+    background-color: #2196f3 !important;
+    color: white !important;
+}
+
+.chip-completed {
+    background-color: #4caf50 !important;
+    color: white !important;
+}
+
+.chip-error {
+    background-color: #f44336 !important;
+    color: white !important;
+}
+
+.chip-skipped {
+    background-color: #9e9e9e !important;
+    color: white !important;
+}
+
+/* Sticky Console Section */
+.console-wrapper {
+    width: 350px;
+    flex-shrink: 0;
+    position: sticky;
+    /* Sticky Magic */
+    top: 84px;
+    /* Toolbar height + margin */
+    height: calc(100vh - 104px);
+}
+
+.console-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #2b2b2b;
+    color: #a9b7c6;
+    border-radius: 8px;
+}
+
+.console-header {
+    background-color: #3c3f41;
+    padding: 10px;
+    border-bottom: 1px solid #555;
+}
+
+.console-title {
+    color: #fff;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0 !important;
+}
+
+.console-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.log-output {
+    flex: 1;
+    overflow-y: auto;
+    /* Internal Scrollbar */
+    padding: 10px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    height: calc(100vh - 180px);
+    /* Approximate available height */
+}
+
+.log-line {
+    margin-bottom: 4px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 2px;
+}
+
+.log-time {
+    color: #808080;
+}
+
+.log-empty {
+    color: #666;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.italic-text {
+    font-style: italic;
+    color: #666;
+}
