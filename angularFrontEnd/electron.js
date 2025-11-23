@@ -45,5 +45,28 @@ app.on('activate', () => {
 });
 
 ipcMain.on('start-scraping', (event, { authIds, showBrowser }) => {
-    scraperHandler.scrape(authIds, showBrowser, event);
+    console.log('=== IPC RECIBIDO ===');
+    console.log('AuthIds:', authIds);
+    console.log('ShowBrowser:', showBrowser);
+    
+    if (!authIds || authIds.length === 0) {
+        console.error('Error: No se recibieron authIds');
+        event.reply('scraping-error', { message: 'No se recibieron IDs para procesar' });
+        return;
+    }
+    
+    scraperHandler.scrape(authIds, showBrowser, event).catch(err => {
+        console.error('Error en scraperHandler.scrape:', err);
+        event.reply('scraping-error', { message: err.message || 'Error desconocido' });
+    });
+});
+
+ipcMain.on('user-confirmed', (event, data) => {
+    console.log('Usuario confirmó que está listo:', data);
+    // El handler en scraper-handler.js escuchará este evento
+});
+
+ipcMain.on('cancel-scraping', (event, data) => {
+    console.log('Usuario canceló el scraping:', data);
+    // El handler en scraper-handler.js escuchará este evento
 });

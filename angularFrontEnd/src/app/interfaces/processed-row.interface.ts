@@ -1,4 +1,4 @@
-export type RowStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR' | 'SKIPPED';
+export type RowStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'SUCCESS' | 'ERROR' | 'SKIPPED';
 
 export interface ProcessedRow {
     __rowNum__: number;
