@@ -1,5 +1,4 @@
-import { Component, ViewChild, ElementRef, signal, WritableSignal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ViewChild, ElementRef, signal, WritableSignal, ChangeDetectionStrategy, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,6 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { DatePipe } from '@angular/common';
 import { ExcelService } from './services/excel.service';
 import { ProcessedRow, RowStatus } from './interfaces/processed-row.interface';
 
@@ -18,9 +18,8 @@ import { ProcessedRow, RowStatus } from './interfaces/processed-row.interface';
     selector: 'app-root',
     templateUrl: './app.html',
     styleUrls: ['./app.css'],
-    standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
-        CommonModule,
         FormsModule,
         MatToolbarModule,
         MatFormFieldModule,
@@ -31,31 +30,42 @@ import { ProcessedRow, RowStatus } from './interfaces/processed-row.interface';
         MatProgressBarModule,
         MatCardModule,
         MatChipsModule,
-        MatSlideToggleModule
+        MatSlideToggleModule,
+        DatePipe
     ]
 })
 export class AppComponent {
-    @ViewChild('fileInput') fileInput!: ElementRef;
+    protected readonly fileInput = viewChild<ElementRef>('fileInput');
 
-    // Signals
-    private fileSig: WritableSignal<File | null> = signal<File | null>(null);
-    private headersSig: WritableSignal<string[]> = signal<string[]>([]);
-    private dataSig: WritableSignal<ProcessedRow[]> = signal<ProcessedRow[]>([]);
-    private displayedColumnsSig: WritableSignal<string[]> = signal<string[]>([]);
+    // Signals for state management
+    protected readonly fileSig = signal<File | null>(null);
+    protected readonly headersSig = signal<string[]>([]);
+    protected readonly dataSig = signal<ProcessedRow[]>([]);
+    protected readonly displayedColumnsSig = signal<string[]>([]);
+    protected readonly startRowSig = signal<number>(2);
+    protected readonly isProcessingSig = signal<boolean>(false);
+    protected readonly logsSig = signal<{ message: string; timestamp: Date }[]>([]);
+    protected readonly showBrowserSig = signal<boolean>(true);
+    protected readonly showConfirmationModalSig = signal<boolean>(false);
 
-    private startRowSig: WritableSignal<number> = signal<number>(2);
-    private isProcessingSig: WritableSignal<boolean> = signal<boolean>(false);
-
-    // Log structure
-    private logsSig: WritableSignal<{ message: string, timestamp: Date }[]> = signal<{ message: string, timestamp: Date }[]>([]);
-
-    private showBrowserSig: WritableSignal<boolean> = signal<boolean>(false);
-    private showConfirmationModalSig: WritableSignal<boolean> = signal<boolean>(false);
+    // Expose as public getters for template compatibility
+    get file() { return this.fileSig(); }
+    set file(v: File | null) { this.fileSig.set(v); }
+    get headers() { return this.headersSig(); }
+    get data() { return this.dataSig(); }
+    get displayedColumns() { return this.displayedColumnsSig(); }
+    get startRow() { return this.startRowSig(); }
+    set startRow(v: number) { this.startRowSig.set(v); }
+    get isProcessing() { return this.isProcessingSig(); }
+    get logs() { return this.logsSig(); }
+    get showBrowser() { return this.showBrowserSig(); }
+    get showConfirmationModal() { return this.showConfirmationModalSig(); }
+    set showConfirmationModal(v: boolean) { this.showConfirmationModalSig.set(v); }
 
     constructor(private excelService: ExcelService) {
         // Configurar listeners de IPC para Electron
         const ipcRenderer = this.getIpcRenderer();
-        
+
         if (ipcRenderer) {
             ipcRenderer.on('scraping-progress', (event: any, data: { message: string, success?: boolean }) => {
                 this.addLog(data.message);
@@ -80,7 +90,7 @@ export class AppComponent {
                 this.addLog(`CANCELADO: ${data.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
-                
+
                 // Restaurar estado de las filas cuando se recibe la confirmación de cancelación
                 this.dataSig.update(prev => {
                     return prev.map(row => {
@@ -100,7 +110,7 @@ export class AppComponent {
                 this.addLog(`⚠️ ${data.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
-                
+
                 // Restaurar estado de las filas cuando el navegador se cierra
                 this.dataSig.update(prev => {
                     return prev.map(row => {
@@ -138,7 +148,7 @@ export class AppComponent {
             ipcRenderer.send('cancel-scraping', { cancelled: true });
             this.showConfirmationModalSig.set(false);
             this.addLog('Proceso cancelado por el usuario.');
-            
+
             // Restaurar estado de las filas a su estado original
             this.dataSig.update(prev => {
                 return prev.map(row => {
@@ -153,39 +163,18 @@ export class AppComponent {
                     return row;
                 });
             });
-            
+
             // Detener el procesamiento
             this.isProcessingSig.set(false);
         }
     }
-
-    // Expose as properties for template compatibility
-    get file() { return this.fileSig(); }
-    set file(v: File | null) { this.fileSig.set(v); }
-
-    get headers() { return this.headersSig(); }
-    get data() { return this.dataSig(); }
-    get displayedColumns() { return this.displayedColumnsSig(); }
-
-    get startRow() { return this.startRowSig(); }
-    set startRow(v: number) { this.startRowSig.set(v); }
-
-    get isProcessing() { return this.isProcessingSig(); }
-
-    get logs() { return this.logsSig(); }
-
-    get showBrowser() { return this.showBrowserSig(); }
-    set showBrowser(v: boolean) { this.showBrowserSig.set(v); }
-
-    get showConfirmationModal() { return this.showConfirmationModalSig(); }
-    set showConfirmationModal(v: boolean) { this.showConfirmationModalSig.set(v); }
 
     private addLog(message: string) {
         this.logsSig.update(l => [...l, { message, timestamp: new Date() }]);
     }
 
     openFileDialog() {
-        this.fileInput.nativeElement.click();
+        this.fileInput()?.nativeElement.click();
     }
 
     onFileSelected(event: Event) {
@@ -313,15 +302,14 @@ export class AppComponent {
         if (ipcRenderer) {
             this.addLog('Enviando datos a Puppeteer...');
             console.log('Enviando IPC con:', {
-                authIdsCount: authIds.length,
-                showBrowser: this.showBrowserSig()
+                authIdsCount: authIds.length
             });
-            
+
             ipcRenderer.send('start-scraping', {
                 authIds,
-                showBrowser: this.showBrowserSig()
+                showBrowser: true
             });
-            
+
             this.addLog('Mensaje enviado. El navegador se abrirá automáticamente...');
         } else {
             this.addLog('ERROR: No se puede comunicar con Electron. Asegúrate de ejecutar la aplicación usando: npm run electron');
@@ -347,14 +335,14 @@ export class AppComponent {
         const authIdMatch = message.match(/: (\d+)/);
         if (authIdMatch) {
             const authId = authIdMatch[1];
-            
+
             // Obtener la columna de autorización
             const headers = this.headersSig();
             let authIdCol = headers.find(h => h && typeof h === 'string' && (h.toUpperCase().includes('REFERENCIA') || h.toUpperCase().includes('OPERATION')));
             if (!authIdCol && headers.length > 0) {
                 authIdCol = headers.find(h => h && typeof h === 'string');
             }
-            
+
             if (authIdCol) {
                 this.dataSig.update(prev => {
                     return prev.map(row => {
@@ -382,7 +370,7 @@ export class AppComponent {
         // Mapear resultados a las filas correspondientes
         const headers = this.headersSig();
         if (!headers || headers.length === 0) return;
-        
+
         let authIdCol = headers.find(h => h && typeof h === 'string' && (h.toUpperCase().includes('REFERENCIA') || h.toUpperCase().includes('OPERATION')));
         if (!authIdCol && headers.length > 0) {
             // Buscar el primer header válido (no null/undefined)
@@ -406,7 +394,7 @@ export class AppComponent {
                     }
                     return row;
                 }
-                
+
                 const rowAuthId = rowAuthIdValue.toString().trim();
                 if (!rowAuthId || rowAuthId.length === 0) {
                     // Si el valor está vacío después de trim, también saltarlo
@@ -419,20 +407,20 @@ export class AppComponent {
                     }
                     return row;
                 }
-                
+
                 const result = results.find(r => r && r.authId && r.authId.toString().trim() === rowAuthId);
-                
+
                 if (result) {
                     const updatedRow = { ...row };
                     updatedRow.status = 'SUCCESS' as RowStatus;
                     updatedRow.message = `OK - Total: $${result.Total || 0}`;
-                    
+
                     if (result.OperationId) updatedRow['OperationId'] = result.OperationId;
                     if (result.DateIso) updatedRow['DateIso'] = result.DateIso;
                     if (result.Cobro) updatedRow['Cobro'] = result.Cobro;
                     if (result.Total) updatedRow['Total'] = result.Total;
                     if (result.MedioPago) updatedRow['MedioPago'] = result.MedioPago;
-                    
+
                     return updatedRow;
                 } else if (row.status === 'PENDING' || row.status === 'PROCESSING') {
                     return {
