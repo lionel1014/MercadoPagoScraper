@@ -33,7 +33,7 @@
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
     "exceljs": "^4.4.0",
-    "playwright": "^1.56.1",
+    "puppeteer": "^23.10.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "xlsx": "^0.18.5"
