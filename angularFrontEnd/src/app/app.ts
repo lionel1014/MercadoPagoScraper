@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, signal, WritableSignal, ChangeDetectionStrategy, viewChild } from '@angular/core';
+import { Component, ElementRef, signal, ChangeDetectionStrategy, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,6 +13,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { DatePipe } from '@angular/common';
 import { ExcelService } from './services/excel.service';
 import { ProcessedRow, RowStatus } from './interfaces/processed-row.interface';
+import { ScrapingProgress, ScrapingResult, ScrapingError, ScrapingResultItem } from './interfaces/scraping.interface';
+import { IpcRendererEvent, IpcRendererLike } from './interfaces/ipc.interface';
 
 @Component({
     selector: 'app-root',
@@ -67,67 +69,52 @@ export class AppComponent {
         const ipcRenderer = this.getIpcRenderer();
 
         if (ipcRenderer) {
-            ipcRenderer.on('scraping-progress', (event: any, data: { message: string, success?: boolean }) => {
-                this.addLog(data.message);
-                if (data.success !== undefined) {
-                    this.updateRowStatus(data.message, data.success);
+            ipcRenderer.on('scraping-progress', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as ScrapingProgress | undefined;
+                if (payload) this.addLog(payload.message);
+                if (payload?.success !== undefined) {
+                    this.updateRowStatus(payload.message, !!payload.success);
                 }
             });
 
-            ipcRenderer.on('scraping-complete', (event: any, data: { results: any[] }) => {
-                this.addLog(`--- PROCESO COMPLETADO: ${data.results.length} resultados obtenidos ---`);
-                this.processResults(data.results);
+            ipcRenderer.on('scraping-complete', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as ScrapingResult | undefined;
+                const results = payload?.results ?? [];
+                this.addLog(`--- PROCESO COMPLETADO: ${results.length} resultados obtenidos ---`);
+                this.processResults(results);
                 this.isProcessingSig.set(false);
             });
 
-            ipcRenderer.on('scraping-error', (event: any, data: { message: string }) => {
-                this.addLog(`ERROR: ${data.message}`);
+            ipcRenderer.on('scraping-error', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as ScrapingError | undefined;
+                if (payload) this.addLog(`ERROR: ${payload.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
             });
 
-            ipcRenderer.on('scraping-cancelled', (event: any, data: { message: string }) => {
-                this.addLog(`CANCELADO: ${data.message}`);
+            ipcRenderer.on('scraping-cancelled', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as { message: string } | undefined;
+                if (payload) this.addLog(`CANCELADO: ${payload.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
 
                 // Restaurar estado de las filas cuando se recibe la confirmación de cancelación
-                this.dataSig.update(prev => {
-                    return prev.map(row => {
-                        if (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') {
-                            return {
-                                ...row,
-                                status: 'PENDING' as RowStatus,
-                                message: ''
-                            };
-                        }
-                        return row;
-                    });
-                });
+                this.dataSig.update(prev => prev.map(row => (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') ? { ...row, status: 'PENDING' as RowStatus, message: '' } : row));
             });
 
-            ipcRenderer.on('browser-closed', (event: any, data: { message: string }) => {
-                this.addLog(`⚠️ ${data.message}`);
+            ipcRenderer.on('browser-closed', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as { message: string } | undefined;
+                if (payload) this.addLog(`⚠️ ${payload.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
 
                 // Restaurar estado de las filas cuando el navegador se cierra
-                this.dataSig.update(prev => {
-                    return prev.map(row => {
-                        if (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') {
-                            return {
-                                ...row,
-                                status: 'PENDING' as RowStatus,
-                                message: ''
-                            };
-                        }
-                        return row;
-                    });
-                });
+                this.dataSig.update(prev => prev.map(row => (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') ? { ...row, status: 'PENDING' as RowStatus, message: '' } : row));
             });
 
-            ipcRenderer.on('waiting-for-confirmation', (event: any, data: { message: string }) => {
-                this.addLog(data.message);
+            ipcRenderer.on('waiting-for-confirmation', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as { message: string } | undefined;
+                if (payload) this.addLog(payload.message);
                 this.showConfirmationModalSig.set(true);
             });
         }
@@ -317,13 +304,17 @@ export class AppComponent {
         }
     }
 
-    private getIpcRenderer(): any {
-        if (typeof window !== 'undefined' && (window as any).require) {
-            try {
-                return (window as any).require('electron').ipcRenderer;
-            } catch (e) {
-                console.warn('Electron no está disponible:', e);
-                return null;
+    private getIpcRenderer(): IpcRendererLike | null {
+        if (typeof window !== 'undefined') {
+            const w = window as unknown as { require?: (m: string) => unknown };
+            if (typeof w.require === 'function') {
+                try {
+                    const electron = w.require('electron') as { ipcRenderer?: IpcRendererLike } | undefined;
+                    return electron?.ipcRenderer ?? null;
+                } catch (e) {
+                    console.warn('Electron no está disponible:', e);
+                    return null;
+                }
             }
         }
         return null;
@@ -366,7 +357,7 @@ export class AppComponent {
         }
     }
 
-    private processResults(results: any[]) {
+    private processResults(results: ScrapingResultItem[]) {
         // Mapear resultados a las filas correspondientes
         const headers = this.headersSig();
         if (!headers || headers.length === 0) return;

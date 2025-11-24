@@ -25,15 +25,16 @@ export class ExcelService {
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
 
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
 
                     if (!jsonData || jsonData.length === 0) {
                         resolve({ headers: [], data: [] });
                         return;
                     }
 
-                    const headers = jsonData[0] as string[];
-                    const rawRows = jsonData.slice(1);
+                    const headers = (jsonData[0] as unknown[]).map(h => (h === null || h === undefined) ? '' : String(h));
+                    const rawRows = jsonData.slice(1) as unknown[][];
 
                     const processedData: ProcessedRow[] = rawRows.map((row, index) => {
                         const rowObject: ProcessedRow = {
@@ -43,7 +44,7 @@ export class ExcelService {
                         };
 
                         headers.forEach((header, i) => {
-                            rowObject[header] = row[i];
+                            rowObject[header] = (row as unknown[])[i];
                         });
 
                         return rowObject;
