@@ -22,10 +22,6 @@
             <mat-icon>download</mat-icon> Exportar
         </button>
 
-        <mat-slide-toggle [(ngModel)]="showBrowser" [disabled]="isProcessing" color="warn" class="mr-2">
-            Ver proceso
-        </mat-slide-toggle>
-
         <button mat-raised-button class="run-btn" (click)="startScraping()" [disabled]="isProcessing">
             @if(!isProcessing){
             <mat-icon>play_arrow</mat-icon>
@@ -99,7 +95,7 @@
                 </ng-container>
 
                 <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedColumns;" [ngClass]="getRowClass(row)"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class]="getRowClass(row)"></tr>
             </table>
         </div>
 
@@ -110,22 +106,22 @@
                     <mat-card-title class="console-title">
                         <mat-icon class="console-icon">terminal</mat-icon> Consola de Sistema
                     </mat-card-title>
+                    <button mat-stroked-button (click)="clearLogs()" title="Limpiar logs" class="clear-logs-btn">
+                        <mat-icon>delete_sweep</mat-icon>
+                        Limpiar
+                    </button>
                 </mat-card-header>
 
                 <mat-card-content>
                     <div class="log-output" #logContainer>
                         @for (log of logs; track log) {
                         <div class="log-line">
-                            <span class="log-time">[{{ log.timestamp | date:'mediumTime' }}]</span> {{log.message}}
+                            <span class="log-time">[{{ log.timestamp | date: 'mediumTime' }}]</span> {{log.message}}
                         </div>
                         }
                         @if(logs.length === 0){
                         <div class="log-empty">Sistema listo. Esperando inicio...</div>
                         }
-                        <button mat-icon-button (click)="clearLogs()" title="Limpiar logs"
-                            style="position: fixed; top: 90px; right: 20px; z-index: 10;">
-                            <mat-icon>delete_sweep</mat-icon>
-                        </button>
                     </div>
                 </mat-card-content>
 

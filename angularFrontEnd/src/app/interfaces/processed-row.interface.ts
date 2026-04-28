@@ -4,5 +4,5 @@ export interface ProcessedRow {
     __rowNum__: number;
     status: RowStatus;
     message: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }

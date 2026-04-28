@@ -1,5 +1,4 @@
-import { Component, ViewChild, ElementRef, signal, WritableSignal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ElementRef, signal, ChangeDetectionStrategy, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,16 +10,18 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { DatePipe } from '@angular/common';
 import { ExcelService } from './services/excel.service';
 import { ProcessedRow, RowStatus } from './interfaces/processed-row.interface';
+import { ScrapingProgress, ScrapingResult, ScrapingError, ScrapingResultItem } from './interfaces/scraping.interface';
+import { IpcRendererEvent, IpcRendererLike } from './interfaces/ipc.interface';
 
 @Component({
     selector: 'app-root',
     templateUrl: './app.html',
     styleUrls: ['./app.css'],
-    standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
-        CommonModule,
         FormsModule,
         MatToolbarModule,
         MatFormFieldModule,
@@ -31,93 +32,89 @@ import { ProcessedRow, RowStatus } from './interfaces/processed-row.interface';
         MatProgressBarModule,
         MatCardModule,
         MatChipsModule,
-        MatSlideToggleModule
+        MatSlideToggleModule,
+        DatePipe
     ]
 })
 export class AppComponent {
-    @ViewChild('fileInput') fileInput!: ElementRef;
+    protected readonly fileInput = viewChild<ElementRef>('fileInput');
 
-    // Signals
-    private fileSig: WritableSignal<File | null> = signal<File | null>(null);
-    private headersSig: WritableSignal<string[]> = signal<string[]>([]);
-    private dataSig: WritableSignal<ProcessedRow[]> = signal<ProcessedRow[]>([]);
-    private displayedColumnsSig: WritableSignal<string[]> = signal<string[]>([]);
+    // Signals for state management
+    protected readonly fileSig = signal<File | null>(null);
+    protected readonly headersSig = signal<string[]>([]);
+    protected readonly dataSig = signal<ProcessedRow[]>([]);
+    protected readonly displayedColumnsSig = signal<string[]>([]);
+    protected readonly startRowSig = signal<number>(2);
+    protected readonly isProcessingSig = signal<boolean>(false);
+    protected readonly logsSig = signal<{ message: string; timestamp: Date }[]>([]);
+    protected readonly showBrowserSig = signal<boolean>(true);
+    protected readonly showConfirmationModalSig = signal<boolean>(false);
 
-    private startRowSig: WritableSignal<number> = signal<number>(2);
-    private isProcessingSig: WritableSignal<boolean> = signal<boolean>(false);
-
-    // Log structure
-    private logsSig: WritableSignal<{ message: string, timestamp: Date }[]> = signal<{ message: string, timestamp: Date }[]>([]);
-
-    private showBrowserSig: WritableSignal<boolean> = signal<boolean>(false);
-    private showConfirmationModalSig: WritableSignal<boolean> = signal<boolean>(false);
+    // Expose as public getters for template compatibility
+    get file() { return this.fileSig(); }
+    set file(v: File | null) { this.fileSig.set(v); }
+    get headers() { return this.headersSig(); }
+    get data() { return this.dataSig(); }
+    get displayedColumns() { return this.displayedColumnsSig(); }
+    get startRow() { return this.startRowSig(); }
+    set startRow(v: number) { this.startRowSig.set(v); }
+    get isProcessing() { return this.isProcessingSig(); }
+    get logs() { return this.logsSig(); }
+    get showBrowser() { return this.showBrowserSig(); }
+    get showConfirmationModal() { return this.showConfirmationModalSig(); }
+    set showConfirmationModal(v: boolean) { this.showConfirmationModalSig.set(v); }
 
     constructor(private excelService: ExcelService) {
         // Configurar listeners de IPC para Electron
         const ipcRenderer = this.getIpcRenderer();
-        
+
         if (ipcRenderer) {
-            ipcRenderer.on('scraping-progress', (event: any, data: { message: string, success?: boolean }) => {
-                this.addLog(data.message);
-                if (data.success !== undefined) {
-                    this.updateRowStatus(data.message, data.success);
+            ipcRenderer.on('scraping-progress', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as ScrapingProgress | undefined;
+                if (payload) this.addLog(payload.message);
+                if (payload?.success !== undefined) {
+                    this.updateRowStatus(payload.message, !!payload.success);
                 }
             });
 
-            ipcRenderer.on('scraping-complete', (event: any, data: { results: any[] }) => {
-                this.addLog(`--- PROCESO COMPLETADO: ${data.results.length} resultados obtenidos ---`);
-                this.processResults(data.results);
+            ipcRenderer.on('scraping-complete', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as ScrapingResult | undefined;
+                const results = payload?.results ?? [];
+                this.addLog(`--- PROCESO COMPLETADO: ${results.length} resultados obtenidos ---`);
+                this.processResults(results);
                 this.isProcessingSig.set(false);
             });
 
-            ipcRenderer.on('scraping-error', (event: any, data: { message: string }) => {
-                this.addLog(`ERROR: ${data.message}`);
+            ipcRenderer.on('scraping-error', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as ScrapingError | undefined;
+                if (payload) this.addLog(`ERROR: ${payload.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
             });
 
-            ipcRenderer.on('scraping-cancelled', (event: any, data: { message: string }) => {
-                this.addLog(`CANCELADO: ${data.message}`);
+            ipcRenderer.on('scraping-cancelled', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as { message: string } | undefined;
+                if (payload) this.addLog(`CANCELADO: ${payload.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
-                
+
                 // Restaurar estado de las filas cuando se recibe la confirmación de cancelación
-                this.dataSig.update(prev => {
-                    return prev.map(row => {
-                        if (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') {
-                            return {
-                                ...row,
-                                status: 'PENDING' as RowStatus,
-                                message: ''
-                            };
-                        }
-                        return row;
-                    });
-                });
+                this.dataSig.update(prev => prev.map(row => (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') ? { ...row, status: 'PENDING' as RowStatus, message: '' } : row));
             });
 
-            ipcRenderer.on('browser-closed', (event: any, data: { message: string }) => {
-                this.addLog(`⚠️ ${data.message}`);
+            ipcRenderer.on('browser-closed', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as { message: string } | undefined;
+                if (payload) this.addLog(`⚠️ ${payload.message}`);
                 this.isProcessingSig.set(false);
                 this.showConfirmationModalSig.set(false);
-                
+
                 // Restaurar estado de las filas cuando el navegador se cierra
-                this.dataSig.update(prev => {
-                    return prev.map(row => {
-                        if (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') {
-                            return {
-                                ...row,
-                                status: 'PENDING' as RowStatus,
-                                message: ''
-                            };
-                        }
-                        return row;
-                    });
-                });
+                this.dataSig.update(prev => prev.map(row => (row.status === 'PROCESSING' || row.status === 'PENDING' || row.status === 'SKIPPED') ? { ...row, status: 'PENDING' as RowStatus, message: '' } : row));
             });
 
-            ipcRenderer.on('waiting-for-confirmation', (event: any, data: { message: string }) => {
-                this.addLog(data.message);
+            ipcRenderer.on('waiting-for-confirmation', (event: IpcRendererEvent, data?: unknown) => {
+                const payload = data as { message: string } | undefined;
+                if (payload) this.addLog(payload.message);
                 this.showConfirmationModalSig.set(true);
             });
         }
@@ -138,7 +135,7 @@ export class AppComponent {
             ipcRenderer.send('cancel-scraping', { cancelled: true });
             this.showConfirmationModalSig.set(false);
             this.addLog('Proceso cancelado por el usuario.');
-            
+
             // Restaurar estado de las filas a su estado original
             this.dataSig.update(prev => {
                 return prev.map(row => {
@@ -153,39 +150,18 @@ export class AppComponent {
                     return row;
                 });
             });
-            
+
             // Detener el procesamiento
             this.isProcessingSig.set(false);
         }
     }
-
-    // Expose as properties for template compatibility
-    get file() { return this.fileSig(); }
-    set file(v: File | null) { this.fileSig.set(v); }
-
-    get headers() { return this.headersSig(); }
-    get data() { return this.dataSig(); }
-    get displayedColumns() { return this.displayedColumnsSig(); }
-
-    get startRow() { return this.startRowSig(); }
-    set startRow(v: number) { this.startRowSig.set(v); }
-
-    get isProcessing() { return this.isProcessingSig(); }
-
-    get logs() { return this.logsSig(); }
-
-    get showBrowser() { return this.showBrowserSig(); }
-    set showBrowser(v: boolean) { this.showBrowserSig.set(v); }
-
-    get showConfirmationModal() { return this.showConfirmationModalSig(); }
-    set showConfirmationModal(v: boolean) { this.showConfirmationModalSig.set(v); }
 
     private addLog(message: string) {
         this.logsSig.update(l => [...l, { message, timestamp: new Date() }]);
     }
 
     openFileDialog() {
-        this.fileInput.nativeElement.click();
+        this.fileInput()?.nativeElement.click();
     }
 
     onFileSelected(event: Event) {
@@ -313,15 +289,14 @@ export class AppComponent {
         if (ipcRenderer) {
             this.addLog('Enviando datos a Puppeteer...');
             console.log('Enviando IPC con:', {
-                authIdsCount: authIds.length,
-                showBrowser: this.showBrowserSig()
+                authIdsCount: authIds.length
             });
-            
+
             ipcRenderer.send('start-scraping', {
                 authIds,
-                showBrowser: this.showBrowserSig()
+                showBrowser: true
             });
-            
+
             this.addLog('Mensaje enviado. El navegador se abrirá automáticamente...');
         } else {
             this.addLog('ERROR: No se puede comunicar con Electron. Asegúrate de ejecutar la aplicación usando: npm run electron');
@@ -329,13 +304,17 @@ export class AppComponent {
         }
     }
 
-    private getIpcRenderer(): any {
-        if (typeof window !== 'undefined' && (window as any).require) {
-            try {
-                return (window as any).require('electron').ipcRenderer;
-            } catch (e) {
-                console.warn('Electron no está disponible:', e);
-                return null;
+    private getIpcRenderer(): IpcRendererLike | null {
+        if (typeof window !== 'undefined') {
+            const w = window as unknown as { require?: (m: string) => unknown };
+            if (typeof w.require === 'function') {
+                try {
+                    const electron = w.require('electron') as { ipcRenderer?: IpcRendererLike } | undefined;
+                    return electron?.ipcRenderer ?? null;
+                } catch (e) {
+                    console.warn('Electron no está disponible:', e);
+                    return null;
+                }
             }
         }
         return null;
@@ -347,14 +326,14 @@ export class AppComponent {
         const authIdMatch = message.match(/: (\d+)/);
         if (authIdMatch) {
             const authId = authIdMatch[1];
-            
+
             // Obtener la columna de autorización
             const headers = this.headersSig();
             let authIdCol = headers.find(h => h && typeof h === 'string' && (h.toUpperCase().includes('REFERENCIA') || h.toUpperCase().includes('OPERATION')));
             if (!authIdCol && headers.length > 0) {
                 authIdCol = headers.find(h => h && typeof h === 'string');
             }
-            
+
             if (authIdCol) {
                 this.dataSig.update(prev => {
                     return prev.map(row => {
@@ -378,11 +357,11 @@ export class AppComponent {
         }
     }
 
-    private processResults(results: any[]) {
+    private processResults(results: ScrapingResultItem[]) {
         // Mapear resultados a las filas correspondientes
         const headers = this.headersSig();
         if (!headers || headers.length === 0) return;
-        
+
         let authIdCol = headers.find(h => h && typeof h === 'string' && (h.toUpperCase().includes('REFERENCIA') || h.toUpperCase().includes('OPERATION')));
         if (!authIdCol && headers.length > 0) {
             // Buscar el primer header válido (no null/undefined)
@@ -406,7 +385,7 @@ export class AppComponent {
                     }
                     return row;
                 }
-                
+
                 const rowAuthId = rowAuthIdValue.toString().trim();
                 if (!rowAuthId || rowAuthId.length === 0) {
                     // Si el valor está vacío después de trim, también saltarlo
@@ -419,20 +398,20 @@ export class AppComponent {
                     }
                     return row;
                 }
-                
+
                 const result = results.find(r => r && r.authId && r.authId.toString().trim() === rowAuthId);
-                
+
                 if (result) {
                     const updatedRow = { ...row };
                     updatedRow.status = 'SUCCESS' as RowStatus;
                     updatedRow.message = `OK - Total: $${result.Total || 0}`;
-                    
+
                     if (result.OperationId) updatedRow['OperationId'] = result.OperationId;
                     if (result.DateIso) updatedRow['DateIso'] = result.DateIso;
                     if (result.Cobro) updatedRow['Cobro'] = result.Cobro;
                     if (result.Total) updatedRow['Total'] = result.Total;
                     if (result.MedioPago) updatedRow['MedioPago'] = result.MedioPago;
-                    
+
                     return updatedRow;
                 } else if (row.status === 'PENDING' || row.status === 'PROCESSING') {
                     return {
