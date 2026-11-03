@@ -1,0 +1,5 @@
+# Lintea solo los .ts/.html de src/ que van en el commit (los mismos que cubre `ng lint`).
+# shortcut: lintea la versión del working tree y no admite espacios en rutas; pasar a lint-staged si hace falta staging parcial.
+files=$(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.ts' 'src/*.html')
+[ -z "$files" ] && exit 0
+npx --no-install eslint $files

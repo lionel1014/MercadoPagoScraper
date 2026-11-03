@@ -1,0 +1,18 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./.angular/**)",
+      "Read(./.playwright-mcp/**)",
+      "Read(./vendor/**)",
+      "Read(./release/**)",
+      "Read(./package-lock.json)",
+      "Read(./.env)",
+      "Read(./docs/detalle-ejemplo.json)"
+    ]
+  }
+}
