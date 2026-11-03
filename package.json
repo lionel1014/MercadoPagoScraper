@@ -6,9 +6,14 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "electron": "npm run build && .\\node_modules\\.bin\\electron.cmd ."
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadless",
+    "lint": "ng lint",
+    "validate": "npm run lint && npm run build:prod && npm run test:ci",
+    "electron": "npm run build && .\\node_modules\\.bin\\electron.cmd .",
+    "prepare": "husky"
   },
   "prettier": {
     "printWidth": 100,
@@ -44,16 +49,21 @@
     "@angular/build": "^21.0.0",
     "@angular/cli": "^21.0.0",
     "@angular/compiler-cli": "^21.0.0",
+    "@eslint/js": "^10.0.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^20.5.6",
     "@types/puppeteer": "^5.4.6",
+    "angular-eslint": "21.4.0",
     "electron": "^39.2.3",
+    "eslint": "^10.3.0",
+    "husky": "^9.1.7",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "8.59.2"
   }
 }

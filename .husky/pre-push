@@ -1,0 +1,2 @@
+# Bloquea el push si la compilación de producción falla.
+npm run build:prod

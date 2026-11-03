@@ -10,6 +10,11 @@
 /node_modules
 npm-debug.log
 yarn-error.log
+*.log
+
+# Herramientas de IA locales (Claude Code, Impeccable)
+.claude/
+.impeccable/
 
 # IDEs and editors
 .idea/

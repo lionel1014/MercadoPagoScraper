@@ -40,6 +40,17 @@ npm install
 | `npm run build` | Compila Angular en `dist/mercadoPagoScreapper/`. |
 | `npm run watch` | Compila en modo desarrollo y recompila al guardar. |
 | `npm test` | Corre los tests unitarios. |
+| `npm run lint` | Revisa el código con ESLint. |
+| `npm run build:prod` | Compilación de producción. |
+| `npm run test:ci` | Tests una sola vez, sin ventana (necesita Chrome instalado o la variable `CHROME_BIN`). |
+| `npm run validate` | Lint + compilación de producción + tests, en ese orden; se detiene en el primer error. |
+
+### Validaciones automáticas (Husky)
+
+`npm install` instala los Git Hooks de [Husky](https://typicode.github.io/husky) (carpeta `.husky/`):
+
+- **pre-commit:** corre ESLint sobre los `.ts`/`.html` de `src/` incluidos en el commit. Si hay errores, el commit se cancela.
+- **pre-push:** corre `npm run build:prod`. Si la compilación falla, el push se cancela y se muestran los errores.
 
 ## Cómo usarlo
 
