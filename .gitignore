@@ -12,9 +12,14 @@ npm-debug.log
 yarn-error.log
 *.log
 
-# Herramientas de IA locales (Claude Code, Impeccable)
-.claude/
+# Claude Code: se versionan skills, agentes y settings.json; lo personal queda local
+.claude/settings.local.json
 .impeccable/
+.playwright-mcp/
+
+# Navegador empaquetado e instaladores (se generan con npm run dist)
+/vendor
+/release
 
 # IDEs and editors
 .idea/

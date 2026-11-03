@@ -81,7 +81,7 @@
     background-color: #e3f2fd;
 }
 
-.row-completed {
+.row-found {
     background-color: #e8f5e9;
 }
 
@@ -138,7 +138,7 @@
     color: white !important;
 }
 
-.chip-completed {
+.chip-found {
     background-color: #4caf50 !important;
     color: white !important;
 }
@@ -148,10 +148,6 @@
     color: white !important;
 }
 
-.chip-success {
-    background-color: #4caf50 !important;
-    color: white !important;
-}
 
 .chip-skipped {
     background-color: #9e9e9e !important;
@@ -259,4 +255,38 @@
 .clear-logs-btn:active {
     border: 1px solid rgba(255,255,255,1) !important;
     background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.row-not-found {
+    background-color: #fff8e1;
+}
+
+.chip-queued {
+    background-color: #bbdefb !important;
+}
+
+.chip-not-found {
+    background-color: #ff9800 !important;
+    color: white !important;
+}
+
+.notice-card,
+.range-error {
+    margin: 16px;
+}
+
+.range-error {
+    color: #c62828;
+    font-weight: 500;
+}
+
+.progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 16px;
+}
+
+.progress-row mat-progress-bar {
+    flex: 1;
 }

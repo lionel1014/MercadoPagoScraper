@@ -1,8 +1,12 @@
-export type RowStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'SUCCESS' | 'ERROR' | 'SKIPPED';
+import { OperationData } from './scraper-api.interface';
+
+export type RowStatus = 'pending' | 'queued' | 'processing' | 'found' | 'not-found' | 'error' | 'skipped';
 
 export interface ProcessedRow {
-    __rowNum__: number;
+    row: number;
+    id: string;
+    values: string[];
     status: RowStatus;
     message: string;
-    [key: string]: unknown;
+    data?: OperationData;
 }

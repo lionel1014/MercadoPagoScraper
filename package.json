@@ -1,7 +1,10 @@
 {
   "name": "mercado-pago-screapper",
-  "version": "0.0.0",
-  "main": "electron.js",
+  "productName": "MercadoPagoScraper",
+  "version": "1.0.0",
+  "description": "Completa un Excel con los datos de operaciones de Mercado Pago usando la sesión de la usuaria.",
+  "author": "Lionel Diez Gomez",
+  "main": "electron/main.js",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -10,9 +13,12 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadless",
+    "test:electron": "node --test \"electron/test/*.test.js\"",
     "lint": "ng lint",
-    "validate": "npm run lint && npm run build:prod && npm run test:ci",
-    "electron": "npm run build && .\\node_modules\\.bin\\electron.cmd .",
+    "validate": "npm run lint && npm run build:prod && npm run test:ci && npm run test:electron",
+    "electron": "npm run build && electron .",
+    "fetch-browser": "node scripts/fetch-browser.js",
+    "dist": "npm run build:prod && npm run fetch-browser && electron-builder --win --x64",
     "prepare": "husky"
   },
   "prettier": {
@@ -29,32 +35,33 @@
   },
   "private": true,
   "dependencies": {
+    "@puppeteer/browsers": "2.6.1",
+    "exceljs": "^4.4.0",
+    "puppeteer": "^23.10.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.0.0",
     "@angular/cdk": "^21.0.0",
+    "@angular/cli": "^21.0.0",
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
+    "@angular/compiler-cli": "^21.0.0",
     "@angular/core": "^21.0.0",
     "@angular/forms": "^21.0.0",
     "@angular/material": "^21.0.0",
     "@angular/platform-browser": "^21.0.0",
     "@angular/router": "^21.0.0",
-    "dotenv": "^16.4.5",
-    "exceljs": "^4.4.0",
-    "openai": "^6.9.1",
-    "puppeteer": "^23.10.4",
-    "rxjs": "^7.8.2",
-    "tslib": "^2.3.0",
-    "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "@angular/build": "^21.0.0",
-    "@angular/cli": "^21.0.0",
-    "@angular/compiler-cli": "^21.0.0",
     "@eslint/js": "^10.0.1",
+    "@fontsource/roboto": "^5.3.0",
+    "@playwright/mcp": "^0.0.84",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^20.5.6",
     "@types/puppeteer": "^5.4.6",
     "angular-eslint": "21.4.0",
+    "dotenv": "^16.4.5",
     "electron": "^39.2.3",
+    "electron-builder": "^26.18.0",
     "eslint": "^10.3.0",
     "husky": "^9.1.7",
     "jasmine-core": "~5.9.0",
@@ -63,7 +70,60 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "material-icons": "^1.13.14",
+    "openai": "^6.9.1",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.3.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "8.59.2"
+  },
+  "build": {
+    "appId": "com.lionel1014.mercadopagoscraper",
+    "productName": "MercadoPagoScraper",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "package.json",
+      "electron/**/*",
+      "!electron/**/*.test.js",
+      "!electron/test/**",
+      "dist/mercadoPagoScreapper/browser/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/browser",
+        "to": "browser"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MercadoPagoScraper",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    }
   }
 }
